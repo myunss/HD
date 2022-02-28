@@ -15,5 +15,6 @@ namespace HD.Entities
         public string User { get; set; }
         public string CreateDate { get; set; }
         public bool IsActive { get; set; }
+        public decimal CampaignPrice { get; set; }
     }
 }

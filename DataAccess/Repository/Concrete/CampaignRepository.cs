@@ -85,12 +85,13 @@ namespace DataAccess.Repository.Concrete
         {
             GetCampaignInfoRequestModel getCampaignInfoRequestModel = new GetCampaignInfoRequestModel();
             GetCampaignInfoResponseModel getCampaignInfoResponseModel = new GetCampaignInfoResponseModel();
+            IncreaseTimeResponseModel increaseTimeResponseModel = new IncreaseTimeResponseModel();
             var sql = "Select*from Campaign where ID=@Id";
             using (var connection = new SqlConnection(configuration.GetConnectionString("DefaultConnection")))
             {
                 connection.ConnectionString = "Data Source=DESKTOP-D7BBR87;Initial Catalog=HD;Integrated Security=True;";
                 connection.Open();
-                var result = connection.QuerySingleOrDefault<Campaign>(sql, new { ID = increaseTimeRequestModel.CampaignId });
+                var Campaignresult = connection.QuerySingleOrDefault<Campaign>(sql, new { ID = increaseTimeRequestModel.CampaignId });
                 if (increaseTimeRequestModel.CampaignId > 0)
                 {
                     getCampaignInfoRequestModel.CampaignId = increaseTimeRequestModel.CampaignId;
@@ -99,20 +100,38 @@ namespace DataAccess.Repository.Concrete
                 //Hedefin gerçekleşme yüzdesini buluyoruz
                 double TotalSales = getCampaignInfoResponseModel.TotalSales;
                 double TargetSalesCount = getCampaignInfoResponseModel.TargetSalesCount;
-                double percent = TotalSales / TargetSalesCount;
+                double percent = (TargetSalesCount / 100)* TotalSales;
                 //Hedefin %15 veya daha aşağındaysa fiyat düzenlemesi yapıyoruz
 
-                if (percent < 0.15)
+                if (percent < 15)
                 {
-                    decimal PriceManipulationLimit = (decimal)result.PriceManipulationLimit;
-                    
-                    var Product = "Select*from Product where ID=@ID";
-                    var ProductResult = connection.QuerySingleOrDefault<Product>(Product, new { ID = result.ProductId });
-                    decimal ProductPrice = ProductResult.Price;
-                    ProductPrice= ProductPrice - ((ProductPrice / 100)*PriceManipulationLimit);
-                }
+                    decimal PriceManipulationLimit = (decimal)Campaignresult.PriceManipulationLimit;
+                    //Kampanya fiyatını update ediyoruz
+                    var Product = "Select Price,CampaignPrice from Product where ID=@ID";
+                    var ProductResult = connection.QuerySingleOrDefault<Product>(Product, new { ID = Campaignresult.ProductId });
+                    decimal LowestProductPrice = ProductResult.Price;
+                    LowestProductPrice= LowestProductPrice - ((LowestProductPrice / 100)*PriceManipulationLimit);
+                    //Belirtilen aralıktan daha düşük bir fiyat girilemez
+                    if (LowestProductPrice < ProductResult.CampaignPrice)
+                    {
+                        increaseTimeResponseModel.Message = "Item price is out of range";
+                    }
+                    var PriceUpdate = "update Product set CampaignPrice=@ProductPrice where ID=@ID";
+                    var UpdateResult = connection.Execute(PriceUpdate, new { ProductPrice = LowestProductPrice, ID = Campaignresult.ProductId });
 
-                IncreaseTimeResponseModel increaseTimeResponseModel = new IncreaseTimeResponseModel();
+                }
+                //Kampanya saatini update ediyoruz
+                double diffrenceHour = (Campaignresult.CampaignFinishTime - Campaignresult.CreateDate).TotalHours;
+                if (increaseTimeRequestModel.Time>diffrenceHour)
+                {
+                    increaseTimeResponseModel.Message = "The entered time exceeds the campaign period.";
+                }
+                Campaignresult.Duration = Campaignresult.Duration - increaseTimeRequestModel.Time;
+                Campaignresult.CreateDate = Campaignresult.CreateDate.AddHours(increaseTimeRequestModel.Time);
+                var DurationUpdate = "update Campaign set CreateDate=@CreateDate where ID=@ID";
+                var DurationUpdateResult = connection.Execute(DurationUpdate, new { Duration = Campaignresult.Duration, ID = increaseTimeRequestModel.CampaignId });
+                
+                increaseTimeResponseModel.Message = increaseTimeRequestModel.Time + "";
                 return increaseTimeResponseModel;
             }
 

@@ -13,7 +13,7 @@ namespace HD.Entities
         public int ProductId { get; set; }
         public double PriceManipulationLimit { get; set; }
         public int TargetSalesCount { get; set; }
-       
+        public int Duration { get; set; }
         public DateTime CreateDate { get; set; }
         public int Limit { get; set; }
         public bool Status { get; set; }
