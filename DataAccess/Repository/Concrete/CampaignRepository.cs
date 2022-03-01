@@ -107,7 +107,7 @@ namespace DataAccess.Repository.Concrete
                 {
                     decimal PriceManipulationLimit = (decimal)Campaignresult.PriceManipulationLimit;
                     //Kampanya fiyatını update ediyoruz
-                    var Product = "Select Price,CampaignPrice from Product where ID=@ID";
+                    var Product = "Select Price,OriginalPrice,CampaignPrice from Product where ID=@ID";
                     var ProductResult = connection.QuerySingleOrDefault<Product>(Product, new { ID = Campaignresult.ProductId });
                     decimal LowestProductPrice = ProductResult.Price;
                     LowestProductPrice= LowestProductPrice - ((LowestProductPrice / 100)*PriceManipulationLimit);
@@ -125,12 +125,19 @@ namespace DataAccess.Repository.Concrete
                 if (increaseTimeRequestModel.Time>diffrenceHour)
                 {
                     increaseTimeResponseModel.Message = "The entered time exceeds the campaign period.";
+                    return increaseTimeResponseModel;
                 }
                 Campaignresult.Duration = Campaignresult.Duration - increaseTimeRequestModel.Time;
                 Campaignresult.CreateDate = Campaignresult.CreateDate.AddHours(increaseTimeRequestModel.Time);
                 var DurationUpdate = "update Campaign set CreateDate=@CreateDate where ID=@ID";
-                var DurationUpdateResult = connection.Execute(DurationUpdate, new { Duration = Campaignresult.Duration, ID = increaseTimeRequestModel.CampaignId });
-                
+                var DurationUpdateResult = connection.Execute(DurationUpdate, new { Duration = Campaignresult.Duration, ID = Campaignresult.CreateDate });
+                //Kampanya bitmiş ise
+                if (diffrenceHour==0)
+                {
+                    var CampaignFinish = "update product set Price=OriginalPrice where ID=@ID";
+                   
+                    var CampaignFinishResult = connection.Execute(CampaignFinish, new {  ID = Campaignresult.CreateDate }); 
+                }
                 increaseTimeResponseModel.Message = increaseTimeRequestModel.Time + "";
                 return increaseTimeResponseModel;
             }

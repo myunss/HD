@@ -23,7 +23,7 @@ namespace DataAccess.Repository.Concrete
         public CreateProductResponseModel CreateProduct(CreateProductRequestModel createProductRequestModel)
         {
 
-            var sql = " insert into Product(ProductCode,Price,Stock,CreateDate,IsActive) values (@ProductCode,@Price,@Stock,GETDATE(),1) ";
+            var sql = " insert into Product(ProductCode,Price,Stock,CreateDate,IsActive,OriginalPrice) values (@ProductCode,@Price,@Stock,GETDATE(),1,@PriceOriginal) ";
             var sql2 = "Select top 1 ID, ProductCode,Price,Stock from Product order by ID desc";
             CreateProductResponseModel createProductResponseModel = new CreateProductResponseModel();
 
@@ -34,7 +34,7 @@ namespace DataAccess.Repository.Concrete
 
                 using (var transaction = connection.BeginTransaction())
                 {
-                    var result = connection.Execute(sql, new { ProductCode = createProductRequestModel.ProductCode, Price = createProductRequestModel.Price, Stock = createProductRequestModel.Stock }, transaction: transaction);
+                    var result = connection.Execute(sql, new { ProductCode = createProductRequestModel.ProductCode, Price = createProductRequestModel.Price, Stock = createProductRequestModel.Stock, PriceOriginal = createProductRequestModel.Price }, transaction: transaction);
                     if (result > 0)
                     {
                         var result2 = connection.QuerySingleOrDefault<CreateProductResponseModel>(sql2, transaction: transaction);
